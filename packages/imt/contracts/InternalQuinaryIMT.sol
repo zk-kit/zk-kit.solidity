@@ -7,6 +7,7 @@ import {SNARK_SCALAR_FIELD, MAX_DEPTH} from "./Constants.sol";
 // Each incremental tree has certain properties and data that will
 // be used to add new leaves.
 struct QuinaryIMTData {
+    bool initialized; // Flag to track if the tree has been initialized
     uint256 depth; // Depth of the tree (levels - 1).
     uint256 root; // Root hash of the tree.
     uint256 numberOfLeaves; // Number of leaves of the tree.
@@ -22,6 +23,8 @@ error NewLeafCannotEqualOldLeaf();
 error LeafDoesNotExist();
 error LeafIndexOutOfRange();
 error WrongMerkleProofPath();
+error TreeAlreadyInitialized();
+error TreeNotInitialized();
 
 /// @title Incremental quinary Merkle tree.
 /// @dev The incremental tree allows to calculate the root hash each time a leaf is added, ensuring
@@ -32,6 +35,9 @@ library InternalQuinaryIMT {
     /// @param depth: Depth of the tree.
     /// @param zero: Zero value to be used.
     function _init(QuinaryIMTData storage self, uint256 depth, uint256 zero) internal {
+        if (self.initialized) {
+            revert TreeAlreadyInitialized();
+        }
         if (zero >= SNARK_SCALAR_FIELD) {
             revert ValueGreaterThanSnarkScalarField();
         } else if (depth <= 0 || depth > MAX_DEPTH) {
@@ -59,13 +65,18 @@ library InternalQuinaryIMT {
         }
 
         self.root = zero;
+        self.initialized = true;
     }
 
     /// @dev Inserts a leaf in the tree.
     /// @param self: Tree data.
     /// @param leaf: Leaf to be inserted.
     function _insert(QuinaryIMTData storage self, uint256 leaf) internal {
+        if (!self.initialized) {
+            revert TreeNotInitialized();
+        }
         uint256 depth = self.depth;
+
 
         if (leaf >= SNARK_SCALAR_FIELD) {
             revert ValueGreaterThanSnarkScalarField();
@@ -115,6 +126,9 @@ library InternalQuinaryIMT {
         uint256[4][] calldata proofSiblings,
         uint8[] calldata proofPathIndices
     ) internal {
+        if (!self.initialized) {
+            revert TreeNotInitialized();
+        }
         if (newLeaf == leaf) {
             revert NewLeafCannotEqualOldLeaf();
         } else if (newLeaf >= SNARK_SCALAR_FIELD) {
@@ -173,6 +187,9 @@ library InternalQuinaryIMT {
         uint256[4][] calldata proofSiblings,
         uint8[] calldata proofPathIndices
     ) internal {
+        if (!self.initialized) {
+            revert TreeNotInitialized();
+        }
         _update(self, leaf, self.zeroes[0], proofSiblings, proofPathIndices);
     }
 

@@ -195,32 +195,39 @@ library InternalBinaryIMT {
 
         uint256 depth = self.depth;
         uint256 hash = newLeaf;
-        uint256 updateIndex;
+
+        uint256 updateLeafIndex;
+        for (uint8 i = 0; i < depth; ) {
+            updateLeafIndex |= uint256(proofPathIndices[i]) << uint256(i);
+            unchecked {
+                ++i;
+            }
+        }
+
+        uint256 numberOfLeaves = self.numberOfLeaves;
+
+        if (updateLeafIndex >= numberOfLeaves) {
+            revert LeafIndexOutOfRange();
+        }
+
+        uint256 lastInsertIndex = numberOfLeaves - 1;
 
         for (uint8 i = 0; i < depth; ) {
-            updateIndex |= uint256(proofPathIndices[i]) << uint256(i);
+            // Update lastSubtrees only when update and last insertion
+            // share the same parent node at level i+1
+            if ((updateLeafIndex >> (i + 1)) == (lastInsertIndex >> (i + 1))) {
+                self.lastSubtrees[i][proofPathIndices[i]] = hash;
+            }
 
             if (proofPathIndices[i] == 0) {
-                if (proofSiblings[i] == self.lastSubtrees[i][1]) {
-                    self.lastSubtrees[i][0] = hash;
-                }
-
                 hash = PoseidonT3.hash([hash, proofSiblings[i]]);
             } else {
-                if (proofSiblings[i] == self.lastSubtrees[i][0]) {
-                    self.lastSubtrees[i][1] = hash;
-                }
-
                 hash = PoseidonT3.hash([proofSiblings[i], hash]);
             }
 
             unchecked {
                 ++i;
             }
-        }
-
-        if (updateIndex >= self.numberOfLeaves) {
-            revert LeafIndexOutOfRange();
         }
 
         self.root = hash;

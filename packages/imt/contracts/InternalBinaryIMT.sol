@@ -14,6 +14,7 @@ struct BinaryIMTData {
     // The nodes of the subtrees used in the last addition of a leaf (level -> [left node, right node]).
     mapping(uint256 => uint256[2]) lastSubtrees; // Caching these values is essential to efficient appends.
     bool useDefaultZeroes;
+    bool initialized;
 }
 
 error ValueGreaterThanSnarkScalarField();
@@ -24,6 +25,8 @@ error NewLeafCannotEqualOldLeaf();
 error LeafDoesNotExist();
 error LeafIndexOutOfRange();
 error WrongMerkleProofPath();
+error TreeAlreadyInitialized();
+error TreeNotInitialized();
 
 /// @title Incremental binary Merkle tree.
 /// @dev The incremental tree allows to calculate the root hash each time a leaf is added, ensuring
@@ -105,6 +108,10 @@ library InternalBinaryIMT {
     /// @param depth: Depth of the tree.
     /// @param zero: Zero value to be used.
     function _init(BinaryIMTData storage self, uint256 depth, uint256 zero) internal {
+        if (self.initialized) {
+            revert TreeAlreadyInitialized();
+        }
+
         if (zero >= SNARK_SCALAR_FIELD) {
             revert ValueGreaterThanSnarkScalarField();
         } else if (depth <= 0 || depth > MAX_DEPTH) {
@@ -123,9 +130,14 @@ library InternalBinaryIMT {
         }
 
         self.root = zero;
+        self.initialized = true;
     }
 
     function _initWithDefaultZeroes(BinaryIMTData storage self, uint256 depth) internal {
+        if (self.initialized) {
+            revert TreeAlreadyInitialized();
+        }
+
         if (depth <= 0 || depth > MAX_DEPTH) {
             revert DepthNotSupported();
         }
@@ -134,12 +146,17 @@ library InternalBinaryIMT {
         self.useDefaultZeroes = true;
 
         self.root = _defaultZero(depth);
+        self.initialized = true;
     }
 
     /// @dev Inserts a leaf in the tree.
     /// @param self: Tree data.
     /// @param leaf: Leaf to be inserted.
     function _insert(BinaryIMTData storage self, uint256 leaf) internal returns (uint256) {
+        if (!self.initialized) {
+            revert TreeNotInitialized();
+        }
+
         uint256 depth = self.depth;
 
         if (leaf >= SNARK_SCALAR_FIELD) {
@@ -185,6 +202,10 @@ library InternalBinaryIMT {
         uint256[] calldata proofSiblings,
         uint8[] calldata proofPathIndices
     ) internal {
+        if (!self.initialized) {
+            revert TreeNotInitialized();
+        }
+
         if (newLeaf == leaf) {
             revert NewLeafCannotEqualOldLeaf();
         } else if (newLeaf >= SNARK_SCALAR_FIELD) {
@@ -237,6 +258,10 @@ library InternalBinaryIMT {
         uint256[] calldata proofSiblings,
         uint8[] calldata proofPathIndices
     ) internal {
+        if (!self.initialized) {
+            revert TreeNotInitialized();
+        }
+
         _update(self, leaf, self.useDefaultZeroes ? Z_0 : self.zeroes[0], proofSiblings, proofPathIndices);
     }
 

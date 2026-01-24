@@ -62,6 +62,52 @@ describe("LazyIMT", () => {
 
             await expect(lazyIMTTest.init(33)).to.be.revertedWith("LazyIMT: Tree too large")
         })
+
+        it("Should not re-initialize a tree", async () => {
+            await lazyIMTTest.init(10)
+
+            const transaction = lazyIMTTest.init(10)
+
+            await expect(transaction).to.be.revertedWithCustomError(lazyIMT, "TreeAlreadyInitialized")
+        })
+    })
+
+    describe("# initialization guards", () => {
+        it("Should not insert if the tree is not initialized", async () => {
+            const transaction = lazyIMTTest.insert(1)
+
+            await expect(transaction).to.be.revertedWithCustomError(lazyIMT, "TreeNotInitialized")
+        })
+
+        it("Should not update if the tree is not initialized", async () => {
+            const transaction = lazyIMTTest.update(1, 0)
+
+            await expect(transaction).to.be.revertedWithCustomError(lazyIMT, "TreeNotInitialized")
+        })
+
+        it("Should not reset if the tree is not initialized", async () => {
+            const transaction = lazyIMTTest.reset()
+
+            await expect(transaction).to.be.revertedWithCustomError(lazyIMT, "TreeNotInitialized")
+        })
+
+        it("Should not compute root if the tree is not initialized", async () => {
+            const transaction = lazyIMTTest.dynamicRoot(10)
+
+            await expect(transaction).to.be.revertedWithCustomError(lazyIMT, "TreeNotInitialized")
+        })
+
+        it("Should not compute dynamic root if the tree is not initialized", async () => {
+            const transaction = lazyIMTTest.root()
+
+            await expect(transaction).to.be.revertedWithCustomError(lazyIMT, "TreeNotInitialized")
+        })
+
+        it("Should not generate merkle proof if the tree is not initialized", async () => {
+            const transaction = lazyIMTTest.merkleProofElements(0, 10)
+
+            await expect(transaction).to.be.revertedWithCustomError(lazyIMT, "TreeNotInitialized")
+        })
     })
 
     describe("# insert", () => {

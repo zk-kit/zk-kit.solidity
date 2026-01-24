@@ -33,6 +33,38 @@ describe("BinaryIMT", () => {
             expect(depth).to.equal(jsBinaryIMT.depth)
         })
 
+        it("Should not re-initialize a tree", async () => {
+            await binaryIMTTest.init(jsBinaryIMT.depth)
+
+            const transaction = binaryIMTTest.init(jsBinaryIMT.depth)
+
+            await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "TreeAlreadyInitialized")
+        })
+
+        it("Should not re-initialize a tree with default zeroes", async () => {
+            await binaryIMTTest.initWithDefaultZeroes(jsBinaryIMT.depth)
+
+            const transaction = binaryIMTTest.initWithDefaultZeroes(jsBinaryIMT.depth)
+
+            await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "TreeAlreadyInitialized")
+        })
+
+        it("Should not re-initialize a tree with default zeroes after init", async () => {
+            await binaryIMTTest.init(jsBinaryIMT.depth)
+
+            const transaction = binaryIMTTest.initWithDefaultZeroes(jsBinaryIMT.depth)
+
+            await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "TreeAlreadyInitialized")
+        })
+
+        it("Should not re-initialize a tree with init after default zeroes", async () => {
+            await binaryIMTTest.initWithDefaultZeroes(jsBinaryIMT.depth)
+
+            const transaction = binaryIMTTest.init(jsBinaryIMT.depth)
+
+            await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "TreeAlreadyInitialized")
+        })
+
         it("Should create a tree with default zeroes", async () => {
             await binaryIMTTest.initWithDefaultZeroes(jsBinaryIMT.depth)
 
@@ -44,7 +76,15 @@ describe("BinaryIMT", () => {
     })
 
     describe("# insert", () => {
+        it("Should not insert a leaf if the tree is not initialized", async () => {
+            const transaction = binaryIMTTest.insert(1)
+
+            await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "TreeNotInitialized")
+        })
+
         it("Should not insert a leaf if its value is > SNARK_SCALAR_FIELD", async () => {
+            await binaryIMTTest.init(jsBinaryIMT.depth)
+
             const transaction = binaryIMTTest.insert(SNARK_SCALAR_FIELD)
 
             await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "ValueGreaterThanSnarkScalarField")
@@ -118,6 +158,12 @@ describe("BinaryIMT", () => {
     })
 
     describe("# update", () => {
+        it("Should not update a leaf if the tree is not initialized", async () => {
+            const transaction = binaryIMTTest.update(1, 2, [0, 1], [0, 1])
+
+            await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "TreeNotInitialized")
+        })
+
         it("Should not update a leaf if the new value is the same as the old one", async () => {
             await binaryIMTTest.init(jsBinaryIMT.depth)
             await binaryIMTTest.insert(1)
@@ -250,7 +296,15 @@ describe("BinaryIMT", () => {
     })
 
     describe("# remove", () => {
+        it("Should not remove a leaf if the tree is not initialized", async () => {
+            const transaction = binaryIMTTest.remove(1, [0, 1], [0, 1])
+
+            await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "TreeNotInitialized")
+        })
+
         it("Should not remove a leaf if its value is > SNARK_SCALAR_FIELD", async () => {
+            await binaryIMTTest.init(jsBinaryIMT.depth)
+
             const transaction = binaryIMTTest.remove(SNARK_SCALAR_FIELD, [0, 1], [0, 1])
 
             await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "ValueGreaterThanSnarkScalarField")

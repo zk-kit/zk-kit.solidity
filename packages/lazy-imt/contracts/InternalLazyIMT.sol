@@ -5,10 +5,14 @@ import {PoseidonT3} from "poseidon-solidity/PoseidonT3.sol";
 import {SNARK_SCALAR_FIELD, MAX_DEPTH} from "./Constants.sol";
 
 struct LazyIMTData {
+    bool initialized;
     uint40 maxIndex;
     uint40 numberOfLeaves;
     mapping(uint256 => uint256) elements;
 }
+
+error TreeAlreadyInitialized();
+error TreeNotInitialized();
 
 library InternalLazyIMT {
     uint40 internal constant MAX_INDEX = (1 << 32) - 1;
@@ -85,12 +89,21 @@ library InternalLazyIMT {
     }
 
     function _init(LazyIMTData storage self, uint8 depth) internal {
+        if (self.initialized) {
+            revert TreeAlreadyInitialized();
+        }
+
         require(depth <= MAX_DEPTH, "LazyIMT: Tree too large");
         self.maxIndex = uint40((1 << depth) - 1);
         self.numberOfLeaves = 0;
+        self.initialized = true;
     }
 
     function _reset(LazyIMTData storage self) internal {
+        if (!self.initialized) {
+            revert TreeNotInitialized();
+        }
+
         self.numberOfLeaves = 0;
     }
 
@@ -100,6 +113,10 @@ library InternalLazyIMT {
     }
 
     function _insert(LazyIMTData storage self, uint256 leaf) internal {
+        if (!self.initialized) {
+            revert TreeNotInitialized();
+        }
+
         uint40 index = self.numberOfLeaves;
         require(leaf < SNARK_SCALAR_FIELD, "LazyIMT: leaf must be < SNARK_SCALAR_FIELD");
         require(index < self.maxIndex, "LazyIMT: tree is full");
@@ -122,6 +139,10 @@ library InternalLazyIMT {
     }
 
     function _update(LazyIMTData storage self, uint256 leaf, uint40 index) internal {
+        if (!self.initialized) {
+            revert TreeNotInitialized();
+        }
+
         require(leaf < SNARK_SCALAR_FIELD, "LazyIMT: leaf must be < SNARK_SCALAR_FIELD");
         uint40 numberOfLeaves = self.numberOfLeaves;
         require(index < numberOfLeaves, "LazyIMT: leaf must exist");
@@ -147,6 +168,10 @@ library InternalLazyIMT {
     }
 
     function _root(LazyIMTData storage self) internal view returns (uint256) {
+        if (!self.initialized) {
+            revert TreeNotInitialized();
+        }
+
         // this will always short circuit if self.numberOfLeaves == 0
         uint40 numberOfLeaves = self.numberOfLeaves;
         // dynamically determine a depth
@@ -158,6 +183,10 @@ library InternalLazyIMT {
     }
 
     function _root(LazyIMTData storage self, uint8 depth) internal view returns (uint256) {
+        if (!self.initialized) {
+            revert TreeNotInitialized();
+        }
+
         require(depth > 0, "LazyIMT: depth must be > 0");
         require(depth <= MAX_DEPTH, "LazyIMT: depth must be <= MAX_DEPTH");
         uint40 numberOfLeaves = self.numberOfLeaves;
@@ -218,6 +247,10 @@ library InternalLazyIMT {
         uint40 index,
         uint8 depth
     ) internal view returns (uint256[] memory) {
+        if (!self.initialized) {
+            revert TreeNotInitialized();
+        }
+
         uint40 numberOfLeaves = self.numberOfLeaves;
         require(index < numberOfLeaves, "LazyIMT: leaf must exist");
 

@@ -15,6 +15,8 @@ const hashes: LeanIMTPlusHashFunctions<bigint> = {
     internal: (a, b) => poseidon2([a, b])
 }
 
+const FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617n
+
 const newReference = () => new LeanIMTPlus<bigint>(hashes)
 
 describe("LeanIMTPlus (Solidity)", () => {
@@ -114,6 +116,17 @@ describe("LeanIMTPlus (Solidity)", () => {
             // Insert 25 but point at the sentinel (index 0) instead of the leaf holding 20.
             await expect(tree.insert(25n, 0n)).to.be.reverted
         })
+
+        it("reverts when the supplied low leaf is a tombstone", async () => {
+            const tree = await deployTree()
+            const ref = newReference()
+            for (const v of [10n, 20n, 30n]) await insertBoth(tree, ref, v)
+            const slot20 = await tree.indexOf(20n)
+            await removeBoth(tree, ref, 20n) // slot20 is now a tombstone {0, 0}
+            // A tombstoned slot must never be accepted as a low leaf, even at a value
+            // (25) it would otherwise bracket.
+            await expect(tree.insert(25n, slot20)).to.be.reverted
+        })
     })
 
     describe("insertMany", () => {
@@ -177,6 +190,23 @@ describe("LeanIMTPlus (Solidity)", () => {
             const values = Array.from({ length: tooMany }, (_, i) => BigInt(i + 1))
             const idx = new Array<bigint>(tooMany).fill(0n)
             await expect(tree.insertMany(values, idx)).to.be.reverted
+        })
+
+        it("reverts when a batch entry supplies a wrong low leaf on a non-empty tree", async () => {
+            const tree = await deployTree()
+            // Seed the tree so the next batch runs the non-first-insert path.
+            await (await tree.insertMany([10n, 20n, 30n], [0n, 1n, 2n])).wait()
+            // 25's low leaf is the leaf holding 20, not the sentinel (index 0), which
+            // points at 10; the sentinel does not bracket 25 so the batch reverts.
+            await expect(tree.insertMany([25n], [0n])).to.be.reverted
+            expect(await tree.size()).to.equal(3n) // batch rolled back, nothing added
+        })
+
+        it("is a no-op for an empty batch", async () => {
+            const tree = await deployTree()
+            await (await tree.insertMany([], [])).wait()
+            expect(await tree.leavesCount()).to.equal(0n)
+            expect(await tree.size()).to.equal(0n)
         })
 
         it("stays root-identical to a per-value loop across random batches", async () => {
@@ -284,8 +314,6 @@ describe("LeanIMTPlus (Solidity)", () => {
     })
 
     describe("field-range hardening", () => {
-        const FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617n
-
         it("rejects a proof whose value/leaf are out of the field", async () => {
             const tree = await deployTree()
             const ref = newReference()
@@ -333,6 +361,114 @@ describe("LeanIMTPlus (Solidity)", () => {
             expect(proof.siblings.length).to.be.greaterThan(0)
             proof.siblings[0] = proof.siblings[0] + FIELD
             expect(await tree.verifyProofStatic(proof)).to.equal(false)
+        })
+
+        it("rejects a proof whose leafValue alone is out of the field", async () => {
+            const tree = await deployTree()
+            const ref = newReference()
+            for (const v of [10n, 20n, 30n]) await insertBoth(tree, ref, v)
+            // value stays in-field so the check falls through to the leafValue operand.
+            const bad = toProofStruct(refProofToStruct(ref.generateProof(20n)), {
+                leafValue: 20n + FIELD
+            })
+            expect(await tree.verifyProofStatic(bad)).to.equal(false)
+        })
+
+        it("rejects a proof whose leafNextValue alone is out of the field", async () => {
+            const tree = await deployTree()
+            const ref = newReference()
+            for (const v of [10n, 20n, 30n]) await insertBoth(tree, ref, v)
+            const bad = toProofStruct(refProofToStruct(ref.generateProof(20n)), {
+                leafNextValue: FIELD
+            })
+            expect(await tree.verifyProofStatic(bad)).to.equal(false)
+        })
+    })
+
+    describe("proof structural validation", () => {
+        // Seeds a tree with a handful of leaves (so proofs have a non-trivial sibling
+        // path) and returns it alongside a reference that mirrors it.
+        async function seedTree() {
+            const tree = await deployTree()
+            const ref = newReference()
+            for (const v of [10n, 20n, 30n, 40n]) await insertBoth(tree, ref, v)
+            return { tree, ref }
+        }
+
+        it("rejects a proof with an unknown proofType", async () => {
+            const { tree, ref } = await seedTree()
+            const bad = toProofStruct(refProofToStruct(ref.generateProof(20n)), { proofType: 2 })
+            expect(await tree.verifyProofStatic(bad)).to.equal(false)
+        })
+
+        it("rejects a proof with more than 256 siblings", async () => {
+            const { tree, ref } = await seedTree()
+            const bad = toProofStruct(refProofToStruct(ref.generateProof(20n)), {
+                siblings: new Array(257).fill(1n)
+            })
+            expect(await tree.verifyProofStatic(bad)).to.equal(false)
+        })
+
+        it("rejects a non-canonical leafIndex (bits set beyond the sibling count)", async () => {
+            const { tree, ref } = await seedTree()
+            const proof = refProofToStruct(ref.generateProof(20n))
+            // Any bit at position >= siblings.length makes the packed path non-canonical.
+            const bad = toProofStruct(proof, { leafIndex: 1n << BigInt(proof.siblings.length) })
+            expect(await tree.verifyProofStatic(bad)).to.equal(false)
+        })
+
+        it("rejects a proof for the zero value", async () => {
+            const { tree, ref } = await seedTree()
+            const bad = toProofStruct(refProofToStruct(ref.generateProof(20n)), { value: 0n })
+            expect(await tree.verifyProofStatic(bad)).to.equal(false)
+        })
+
+        it("rejects a membership proof whose leaf does not carry the value", async () => {
+            const { tree, ref } = await seedTree()
+            // proofType 0, but leafValue (20) != value (30).
+            const bad = toProofStruct(refProofToStruct(ref.generateProof(20n)), { value: 30n })
+            expect(await tree.verifyProofStatic(bad)).to.equal(false)
+        })
+
+        it("rejects a non-membership proof whose value is not below leafNextValue", async () => {
+            const { tree, ref } = await seedTree()
+            // Non-membership proof for 25: low leaf 20, leafNext 30. 35 clears the lower
+            // bound (20 < 35) but not the upper one (35 is not < 30).
+            const proof = refProofToStruct(ref.generateProof(25n))
+            expect(proof.proofType).to.equal(1)
+            const bad = toProofStruct(proof, { value: 35n })
+            expect(await tree.verifyProofStatic(bad)).to.equal(false)
+        })
+
+        it("rejects a non-membership proof whose low leaf is a tombstone (index != 0)", async () => {
+            const { tree } = await seedTree()
+            // A value-0 leaf is only legitimate at index 0 (the sentinel). Here it sits
+            // at a non-zero index with a matching (length-1) sibling path, so it clears
+            // the canonical-index check and is caught by the tombstone replay guard.
+            const bad = {
+                proofType: 1,
+                root: 0n,
+                value: 5n,
+                leafValue: 0n,
+                leafNextValue: 0n,
+                leafIndex: 1n,
+                siblings: [1n]
+            }
+            expect(await tree.verifyProofStatic(bad)).to.equal(false)
+        })
+    })
+
+    describe("views", () => {
+        it("root is 0 for an empty tree", async () => {
+            const tree = await deployTree()
+            expect(await tree.root()).to.equal(0n)
+        })
+
+        it("indexOf reverts for an absent value", async () => {
+            const tree = await deployTree()
+            const ref = newReference()
+            for (const v of [10n, 20n]) await insertBoth(tree, ref, v)
+            await expect(tree.indexOf(999n)).to.be.reverted
         })
     })
 
@@ -408,6 +544,24 @@ describe("LeanIMTPlus (Solidity)", () => {
             await expect(tree.update(999n, 50n, 0n, 0n)).to.be.reverted // 999 missing
         })
 
+        it("reverts when the new value equals the old value", async () => {
+            const tree = await deployTree()
+            const ref = newReference()
+            for (const v of [10n, 20n, 30n]) await insertBoth(tree, ref, v)
+            // Use an absent value for both: a present value would revert earlier in the
+            // shared value validation, never reaching the old-equals-new guard.
+            await expect(tree.update(50n, 50n, 0n, 0n)).to.be.reverted
+        })
+
+        it("reverts when the old predecessor is wrong", async () => {
+            const tree = await deployTree()
+            const ref = newReference()
+            for (const v of [10n, 20n, 30n]) await insertBoth(tree, ref, v)
+            // The sentinel (index 0) points at 10, not at 20, so it is not 20's predecessor.
+            const newPred = await findLowLeafIndex(tree, 25n, 20n)
+            await expect(tree.update(20n, 25n, 0n, newPred)).to.be.reverted
+        })
+
         it("reverts when the new predecessor is the old value's own slot", async () => {
             const tree = await deployTree()
             const ref = newReference()
@@ -415,6 +569,20 @@ describe("LeanIMTPlus (Solidity)", () => {
             const slot = await tree.indexOf(20n)
             const pred20 = await findPredecessorIndex(tree, 20n)
             await expect(tree.update(20n, 25n, pred20, slot)).to.be.reverted
+        })
+
+        it("reverts when the new predecessor does not bracket the new value", async () => {
+            const tree = await deployTree()
+            const ref = newReference()
+            for (const v of [10n, 20n, 30n]) await insertBoth(tree, ref, v)
+            const pred20 = await findPredecessorIndex(tree, 20n)
+            // Replace 20 with 25. After 20 is unlinked the list is {10, 30}, so 25's low
+            // leaf is the leaf holding 10; the leaf holding 30 (30 > 25) does not bracket
+            // 25. This new predecessor is a valid slot but the wrong one, so it reverts.
+            const wrongNewPred = await tree.indexOf(30n)
+            await expect(tree.update(20n, 25n, pred20, wrongNewPred)).to.be.reverted
+            expect(await tree.has(20n)).to.equal(true) // all-or-nothing: unchanged
+            expect(await tree.has(25n)).to.equal(false)
         })
     })
 

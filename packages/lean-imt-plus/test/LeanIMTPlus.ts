@@ -163,13 +163,6 @@ describe("LeanIMTPlus (Solidity)", () => {
 
             // Efficiency: the batch is cheaper than the equivalent loop.
             expect(manyGas).to.be.lessThan(loopGas)
-            const saved = (Number(loopGas - manyGas) * 100) / Number(loopGas)
-            // eslint-disable-next-line no-console
-            console.log(
-                `\n    insertMany(${values.length}): ${manyGas} gas vs loop ${loopGas} gas ` +
-                    `(${saved.toFixed(1)}% cheaper, ${(Number(loopGas) / values.length).toFixed(0)} vs ` +
-                    `${(Number(manyGas) / values.length).toFixed(0)} gas/value)`
-            )
         })
 
         it("reverts (rolling back the whole batch) on a duplicate within the batch", async () => {
@@ -469,6 +462,20 @@ describe("LeanIMTPlus (Solidity)", () => {
             const ref = newReference()
             for (const v of [10n, 20n]) await insertBoth(tree, ref, v)
             await expect(tree.indexOf(999n)).to.be.reverted
+        })
+
+        it("depth stays 0 while the tree holds at most one leaf and grows with it", async () => {
+            const tree = await deployTree()
+            const ref = newReference()
+            expect(await tree.depth()).to.equal(0n) // empty tree
+
+            await insertBoth(tree, ref, 10n) // sentinel + one leaf => 2 leaves
+            expect(await tree.depth()).to.equal(1n)
+
+            // ceil(log2(leavesCount)): 6 leaves (sentinel + 5) => depth 3.
+            for (const v of [20n, 30n, 40n, 50n]) await insertBoth(tree, ref, v)
+            expect(await tree.leavesCount()).to.equal(6n)
+            expect(await tree.depth()).to.equal(3n)
         })
     })
 

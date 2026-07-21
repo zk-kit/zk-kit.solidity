@@ -20,8 +20,8 @@
         "incremental-merkle-tree",
         "non-membership-proof"
     ],
-    "repository": "git@github.com:privacy-scaling-explorations/zk-kit.solidity.git",
-    "homepage": "https://github.com/privacy-scaling-explorations/zk-kit.solidity/tree/main/packages/lean-imt-plus",
+    "repository": "git@github.com:zk-kit/zk-kit.solidity.git",
+    "homepage": "https://github.com/zk-kit/zk-kit.solidity/tree/main/packages/lean-imt-plus",
     "publishConfig": {
         "access": "public"
     },

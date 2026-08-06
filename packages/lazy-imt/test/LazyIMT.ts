@@ -2,7 +2,6 @@ import { expect } from "chai"
 import { run, network } from "hardhat"
 import { poseidon2 } from "poseidon-lite"
 import { IMT } from "@zk-kit/imt"
-import type { BigNumber } from "ethers"
 import { LazyIMT, LazyIMTTest } from "../typechain-types"
 
 const random = () => poseidon2([Math.floor(Math.random() * 2 ** 40), 0])
@@ -148,7 +147,7 @@ describe("LazyIMT", () => {
             await lazyIMTTest.init(depth)
 
             await expect(lazyIMTTest.insert(SNARK_SCALAR_FIELD)).to.be.revertedWith(
-                "LazyIMT: leaf must be < SNARK_SCALAR_FIELD"
+                "LazyIMT: leaf must be < hasherLimit"
             )
         })
     })
@@ -236,7 +235,7 @@ describe("LazyIMT", () => {
             }
 
             await expect(lazyIMTTest.update(SNARK_SCALAR_FIELD, 0)).to.be.revertedWith(
-                "LazyIMT: leaf must be < SNARK_SCALAR_FIELD"
+                "LazyIMT: leaf must be < hasherLimit"
             )
         })
     })
@@ -292,7 +291,7 @@ describe("LazyIMT", () => {
 
     describe("# merkleProof", () => {
         // Given a merkle proof (elements and indices) and a leaf, calculates the root
-        function calculateRoot(leafIndex: number, leaf: BigNumber, proofElements: BigNumber[]) {
+        function calculateRoot(leafIndex: number, leaf: bigint, proofElements: bigint[]) {
             let hash = leaf
             const proofIndices = []
             for (let x = 0; x < proofElements.length; x += 1) {

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import {PoseidonT6} from "poseidon-solidity/PoseidonT6.sol";
-import {SNARK_SCALAR_FIELD, MAX_DEPTH} from "./Constants.sol";
+import {MAX_DEPTH} from "./Constants.sol";
 
 // Each incremental tree has certain properties and data that will
 // be used to add new leaves.
@@ -15,7 +14,7 @@ struct QuinaryIMTData {
     mapping(uint256 => uint256[5]) lastSubtrees; // Caching these values is essential to efficient appends.
 }
 
-error ValueGreaterThanSnarkScalarField();
+error ValueGreaterThanHasherLimit();
 error DepthNotSupported();
 error TreeIsFull();
 error NewLeafCannotEqualOldLeaf();
@@ -31,9 +30,17 @@ library InternalQuinaryIMT {
     /// @param self: Tree data.
     /// @param depth: Depth of the tree.
     /// @param zero: Zero value to be used.
-    function _init(QuinaryIMTData storage self, uint256 depth, uint256 zero) internal {
-        if (zero >= SNARK_SCALAR_FIELD) {
-            revert ValueGreaterThanSnarkScalarField();
+    /// @param hasher: Address of the contract/library implements the hash function with hasher.
+    /// @param hasherLimit: To check inputs for the hasher to never exceed inputs past this limit (ex the SNARK_SCALAR_FIELD).
+    function _init(
+        QuinaryIMTData storage self,
+        uint256 depth,
+        uint256 zero,
+        function(uint256[5] memory) view returns (uint256) hasher,
+        uint256 hasherLimit
+    ) internal {
+        if (zero >= hasherLimit) {
+            revert ValueGreaterThanHasherLimit();
         } else if (depth <= 0 || depth > MAX_DEPTH) {
             revert DepthNotSupported();
         }
@@ -51,7 +58,7 @@ library InternalQuinaryIMT {
                 }
             }
 
-            zero = PoseidonT6.hash(zeroChildren);
+            zero = hasher(zeroChildren);
 
             unchecked {
                 ++i;
@@ -64,11 +71,18 @@ library InternalQuinaryIMT {
     /// @dev Inserts a leaf in the tree.
     /// @param self: Tree data.
     /// @param leaf: Leaf to be inserted.
-    function _insert(QuinaryIMTData storage self, uint256 leaf) internal {
+    /// @param hasher: Address of the contract/library implements the hash function with hasher.
+    /// @param hasherLimit: To check inputs for the hasher to never exceed inputs past this limit (ex the SNARK_SCALAR_FIELD).
+    function _insert(
+        QuinaryIMTData storage self,
+        uint256 leaf,
+        function(uint256[5] memory) view returns (uint256) hasher,
+        uint256 hasherLimit
+    ) internal {
         uint256 depth = self.depth;
 
-        if (leaf >= SNARK_SCALAR_FIELD) {
-            revert ValueGreaterThanSnarkScalarField();
+        if (leaf >= hasherLimit) {
+            revert ValueGreaterThanHasherLimit();
         } else if (self.numberOfLeaves >= 5 ** depth) {
             revert TreeIsFull();
         }
@@ -90,7 +104,7 @@ library InternalQuinaryIMT {
                 }
             }
 
-            hash = PoseidonT6.hash(self.lastSubtrees[i]);
+            hash = hasher(self.lastSubtrees[i]);
             index /= 5;
 
             unchecked {
@@ -108,18 +122,22 @@ library InternalQuinaryIMT {
     /// @param newLeaf: New leaf.
     /// @param proofSiblings: Array of the sibling nodes of the proof of membership.
     /// @param proofPathIndices: Path of the proof of membership.
+    /// @param hasher: Address of the contract/library implements the hash function with hasher.
+    /// @param hasherLimit: To check inputs for the hasher to never exceed inputs past this limit (ex the SNARK_SCALAR_FIELD).
     function _update(
         QuinaryIMTData storage self,
         uint256 leaf,
         uint256 newLeaf,
         uint256[4][] calldata proofSiblings,
-        uint8[] calldata proofPathIndices
+        uint8[] calldata proofPathIndices,
+        function(uint256[5] memory) view returns (uint256) hasher,
+        uint256 hasherLimit
     ) internal {
         if (newLeaf == leaf) {
             revert NewLeafCannotEqualOldLeaf();
-        } else if (newLeaf >= SNARK_SCALAR_FIELD) {
-            revert ValueGreaterThanSnarkScalarField();
-        } else if (!_verify(self, leaf, proofSiblings, proofPathIndices)) {
+        } else if (newLeaf >= hasherLimit) {
+            revert ValueGreaterThanHasherLimit();
+        } else if (!_verify(self, leaf, proofSiblings, proofPathIndices, hasher, hasherLimit)) {
             revert LeafDoesNotExist();
         }
 
@@ -148,7 +166,7 @@ library InternalQuinaryIMT {
                 self.lastSubtrees[i][proofPathIndices[i]] = hash;
             }
 
-            hash = PoseidonT6.hash(nodes);
+            hash = hasher(nodes);
 
             unchecked {
                 ++i;
@@ -167,13 +185,17 @@ library InternalQuinaryIMT {
     /// @param leaf: Leaf to be removed.
     /// @param proofSiblings: Array of the sibling nodes of the proof of membership.
     /// @param proofPathIndices: Path of the proof of membership.
+    /// @param hasher: Address of the contract/library implements the hash function with hasher.
+    /// @param hasherLimit: To check inputs for the hasher to never exceed inputs past this limit (ex the SNARK_SCALAR_FIELD).
     function _remove(
         QuinaryIMTData storage self,
         uint256 leaf,
         uint256[4][] calldata proofSiblings,
-        uint8[] calldata proofPathIndices
+        uint8[] calldata proofPathIndices,
+        function(uint256[5] memory) view returns (uint256) hasher,
+        uint256 hasherLimit
     ) internal {
-        _update(self, leaf, self.zeroes[0], proofSiblings, proofPathIndices);
+        _update(self, leaf, self.zeroes[0], proofSiblings, proofPathIndices, hasher, hasherLimit);
     }
 
     /// @dev Verify if the path is correct and the leaf is part of the tree.
@@ -181,17 +203,21 @@ library InternalQuinaryIMT {
     /// @param leaf: Leaf to be removed.
     /// @param proofSiblings: Array of the sibling nodes of the proof of membership.
     /// @param proofPathIndices: Path of the proof of membership.
+    /// @param hasher: Address of the contract/library implements the hash function with hasher.
+    /// @param hasherLimit: To check inputs for the hasher to never exceed inputs past this limit (ex the SNARK_SCALAR_FIELD).
     /// @return True or false.
     function _verify(
         QuinaryIMTData storage self,
         uint256 leaf,
         uint256[4][] calldata proofSiblings,
-        uint8[] calldata proofPathIndices
+        uint8[] calldata proofPathIndices,
+        function(uint256[5] memory) view returns (uint256) hasher,
+        uint256 hasherLimit
     ) internal view returns (bool) {
         uint256 depth = self.depth;
 
-        if (leaf >= SNARK_SCALAR_FIELD) {
-            revert ValueGreaterThanSnarkScalarField();
+        if (leaf >= hasherLimit) {
+            revert ValueGreaterThanHasherLimit();
         } else if (proofPathIndices.length != depth || proofSiblings.length != depth) {
             revert WrongMerkleProofPath();
         }
@@ -207,19 +233,13 @@ library InternalQuinaryIMT {
 
             for (uint8 j = 0; j < 5; ) {
                 if (j < proofPathIndices[i]) {
-                    require(
-                        proofSiblings[i][j] < SNARK_SCALAR_FIELD,
-                        "QuinaryIMT: sibling node must be < SNARK_SCALAR_FIELD"
-                    );
+                    require(proofSiblings[i][j] < hasherLimit, "QuinaryIMT: sibling node must be < hasherLimit");
 
                     nodes[j] = proofSiblings[i][j];
                 } else if (j == proofPathIndices[i]) {
                     nodes[j] = hash;
                 } else {
-                    require(
-                        proofSiblings[i][j - 1] < SNARK_SCALAR_FIELD,
-                        "QuinaryIMT: sibling node must be < SNARK_SCALAR_FIELD"
-                    );
+                    require(proofSiblings[i][j - 1] < hasherLimit, "QuinaryIMT: sibling node must be < hasherLimit");
 
                     nodes[j] = proofSiblings[i][j - 1];
                 }
@@ -229,7 +249,7 @@ library InternalQuinaryIMT {
                 }
             }
 
-            hash = PoseidonT6.hash(nodes);
+            hash = hasher(nodes);
 
             unchecked {
                 ++i;

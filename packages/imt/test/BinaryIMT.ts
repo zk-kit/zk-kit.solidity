@@ -47,7 +47,7 @@ describe("BinaryIMT", () => {
         it("Should not insert a leaf if its value is > SNARK_SCALAR_FIELD", async () => {
             const transaction = binaryIMTTest.insert(SNARK_SCALAR_FIELD)
 
-            await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "ValueGreaterThanSnarkScalarField")
+            await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "ValueGreaterThanHasherLimit")
         })
 
         it("Should insert a leaf in a tree", async () => {
@@ -133,7 +133,7 @@ describe("BinaryIMT", () => {
 
             const transaction = binaryIMTTest.update(1, SNARK_SCALAR_FIELD, [0, 1], [0, 1])
 
-            await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "ValueGreaterThanSnarkScalarField")
+            await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "ValueGreaterThanHasherLimit")
         })
 
         it("Should not update a leaf if its original value is > SNARK_SCALAR_FIELD", async () => {
@@ -142,7 +142,7 @@ describe("BinaryIMT", () => {
 
             const transaction = binaryIMTTest.update(SNARK_SCALAR_FIELD, 2, [0, 1], [0, 1])
 
-            await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "ValueGreaterThanSnarkScalarField")
+            await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "ValueGreaterThanHasherLimit")
         })
 
         it("Should not update a leaf if the path indices are wrong", async () => {
@@ -253,7 +253,7 @@ describe("BinaryIMT", () => {
         it("Should not remove a leaf if its value is > SNARK_SCALAR_FIELD", async () => {
             const transaction = binaryIMTTest.remove(SNARK_SCALAR_FIELD, [0, 1], [0, 1])
 
-            await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "ValueGreaterThanSnarkScalarField")
+            await expect(transaction).to.be.revertedWithCustomError(binaryIMT, "ValueGreaterThanHasherLimit")
         })
 
         it("Should not remove a leaf that does not exist", async () => {

@@ -155,6 +155,54 @@ describe("QuinaryIMT", () => {
             expect(root).to.equal(jsQuinaryIMT.root)
         })
 
+        it("Should correctly maintain lastSubtrees after update and following insert", async () => {
+            const depth = 4
+            const jsQuinaryIMT2 = new JSQuinaryIMT(poseidon5, depth, 0, 5)
+            await quinaryIMTTest.init(depth)
+
+            // Insert 6 leaves (fills group 0, starts group 1)
+            for (let i = 1; i <= 6; i++) {
+                jsQuinaryIMT2.insert(i)
+                await quinaryIMTTest.insert(i)
+            }
+
+            // Update leaf at index 0 (group 0, different from last insert in group 1)
+            const { pathIndices, siblings } = jsQuinaryIMT2.createProof(0)
+            jsQuinaryIMT2.update(0, 10)
+            await quinaryIMTTest.update(1, 10, siblings, pathIndices)
+
+            // Insert another leaf (this uses lastSubtrees which must be correct)
+            jsQuinaryIMT2.insert(7)
+            await quinaryIMTTest.insert(7)
+
+            const { root } = await quinaryIMTTest.data()
+            expect(root).to.equal(jsQuinaryIMT2.root)
+        })
+
+        it("Should correctly maintain lastSubtrees after remove and following insert", async () => {
+            const depth = 4
+            const jsQuinaryIMT2 = new JSQuinaryIMT(poseidon5, depth, 0, 5)
+            await quinaryIMTTest.init(depth)
+
+            // Insert 6 leaves
+            for (let i = 1; i <= 6; i++) {
+                jsQuinaryIMT2.insert(i)
+                await quinaryIMTTest.insert(i)
+            }
+
+            // Remove leaf at index 0
+            const { pathIndices, siblings } = jsQuinaryIMT2.createProof(0)
+            jsQuinaryIMT2.delete(0)
+            await quinaryIMTTest.remove(1, siblings, pathIndices)
+
+            // Insert another leaf
+            jsQuinaryIMT2.insert(7)
+            await quinaryIMTTest.insert(7)
+
+            const { root } = await quinaryIMTTest.data()
+            expect(root).to.equal(jsQuinaryIMT2.root)
+        })
+
         it("Should not update a leaf that hasn't been inserted yet", async () => {
             quinaryIMTTest.init(jsQuinaryIMT.depth)
 

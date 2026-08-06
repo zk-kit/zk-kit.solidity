@@ -32,10 +32,26 @@ describe("QuinaryIMT", () => {
 
             expect(depth).to.equal(jsQuinaryIMT.depth)
         })
+
+        it("Should not re-initialize a tree", async () => {
+            await quinaryIMTTest.init(jsQuinaryIMT.depth)
+
+            const transaction = quinaryIMTTest.init(jsQuinaryIMT.depth)
+
+            await expect(transaction).to.be.revertedWithCustomError(quinaryIMT, "TreeAlreadyInitialized")
+        })
     })
 
     describe("# insert", () => {
+        it("Should not insert a leaf if the tree is not initialized", async () => {
+            const transaction = quinaryIMTTest.insert(1)
+
+            await expect(transaction).to.be.revertedWithCustomError(quinaryIMT, "TreeNotInitialized")
+        })
+
         it("Should not insert a leaf if its value is > SNARK_SCALAR_FIELD", async () => {
+            await quinaryIMTTest.init(jsQuinaryIMT.depth)
+
             const transaction = quinaryIMTTest.insert(SNARK_SCALAR_FIELD)
 
             await expect(transaction).to.be.revertedWithCustomError(quinaryIMT, "ValueGreaterThanSnarkScalarField")
@@ -82,6 +98,12 @@ describe("QuinaryIMT", () => {
     })
 
     describe("# update", () => {
+        it("Should not update a leaf if the tree is not initialized", async () => {
+            const transaction = quinaryIMTTest.update(1, 2, [[0, 1, 2, 3]], [0])
+
+            await expect(transaction).to.be.revertedWithCustomError(quinaryIMT, "TreeNotInitialized")
+        })
+
         it("Should not update a leaf if the new value is the same as the old one", async () => {
             await quinaryIMTTest.init(jsQuinaryIMT.depth)
             await quinaryIMTTest.insert(1)
@@ -194,7 +216,15 @@ describe("QuinaryIMT", () => {
     })
 
     describe("# remove", () => {
+        it("Should not remove a leaf if the tree is not initialized", async () => {
+            const transaction = quinaryIMTTest.remove(1, [[0, 1, 2, 3]], [0])
+
+            await expect(transaction).to.be.revertedWithCustomError(quinaryIMT, "TreeNotInitialized")
+        })
+
         it("Should not remove a leaf if its value is > SNARK_SCALAR_FIELD", async () => {
+            await quinaryIMTTest.init(jsQuinaryIMT.depth)
+
             const transaction = quinaryIMTTest.remove(SNARK_SCALAR_FIELD, [[0, 1, 2, 3]], [0])
 
             await expect(transaction).to.be.revertedWithCustomError(quinaryIMT, "ValueGreaterThanSnarkScalarField")

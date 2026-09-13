@@ -475,14 +475,7 @@ library InternalLeanIMTPlus {
             uint256[] memory parents = _parentsOf(current);
             uint256 childCount = self.nodes[level - 1].length;
             for (uint256 j = 0; j < parents.length; ) {
-                uint256 p = parents[j];
-                uint256 leftIdx = p << 1;
-                uint256 left = self.nodes[level - 1][leftIdx];
-                uint256 rightIdx = leftIdx + 1;
-                // Odd-node promotion: a node without a right child is promoted unchanged.
-                self.nodes[level][p] = rightIdx < childCount
-                    ? PoseidonT3.hash([left, self.nodes[level - 1][rightIdx]])
-                    : left;
+                _recomputeNode(self, level, parents[j], childCount);
                 unchecked {
                     ++j;
                 }
@@ -492,6 +485,18 @@ library InternalLeanIMTPlus {
                 ++level;
             }
         }
+    }
+
+    /// @dev Rewrites the single node `nodes[level][p]` from its two children on the
+    /// level below. Split out of {_recompute} so the innermost work gets its own stack
+    /// frame: inlined into the doubly-nested loop it pushes the legacy codegen past the
+    /// 16-slot reachable stack ("stack too deep").
+    function _recomputeNode(LeanIMTPlusData storage self, uint256 level, uint256 p, uint256 childCount) private {
+        uint256 leftIdx = p << 1;
+        uint256 left = self.nodes[level - 1][leftIdx];
+        uint256 rightIdx = leftIdx + 1;
+        // Odd-node promotion: a node without a right child is promoted unchanged.
+        self.nodes[level][p] = rightIdx < childCount ? PoseidonT3.hash([left, self.nodes[level - 1][rightIdx]]) : left;
     }
 
     /// @dev `ceil(log2(n))` for `n >= 2`, and 0 for `n <= 1`. This is the LeanIMT

@@ -5,26 +5,13 @@ import "dotenv/config"
 
 const hardhatConfig: HardhatUserConfig = {
     solidity: {
-        // LeanIMTPlus is compiled with the latest solc + `viaIR`. The other packages
-        // target 0.8.23, but that compiler's IR pipeline is pathologically slow on the
-        // Poseidon assembly; recent compilers are not.
         version: "0.8.36",
         settings: {
-            // `viaIR` is required: without the IR pipeline the batched `_recompute`
-            // in InternalLeanIMTPlus hits "stack too deep".
-            viaIR: true,
+            viaIR: false,
             optimizer: {
                 enabled: true,
-                runs: 200
+                runs: 1000000
             }
-        }
-    },
-    networks: {
-        // The Poseidon libraries compile to > 24 KB. The EIP-170 size limit is a
-        // mainnet concern (on-chain they are deployed via a deterministic proxy) and
-        // must be lifted for the local test/coverage network.
-        hardhat: {
-            allowUnlimitedContractSize: true
         }
     },
     gasReporter: {

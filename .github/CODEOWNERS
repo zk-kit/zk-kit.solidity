@@ -9,5 +9,6 @@
 /packages/lazy-imt/ @chancehudson
 /packages/lazytower/ @LCamel
 /packages/lean-imt/ @vplasencia
+/packages/lean-imt-sha256/ @vplasencia
 /packages/lean-imt-plus/ @vplasencia
 /packages/lean-imt-plus-sha256/ @vplasencia

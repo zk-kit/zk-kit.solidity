@@ -89,16 +89,5 @@ const tree = new LeanIMTPlus<bigint>({
 })
 ```
 
-## Security
-
-The library has **no access control**. To use it safely:
-
-1. **Gate the mutations** (`insert`, `insertMany`, `remove`, `update`) with your own
-   authorization. Never deploy the test harness in `contracts/test/`.
-2. **Pin the root.** Prefer `verifyProof(self, proof)`, or compare `proof.root`
-   against a root you trust before using the stateless overload.
-3. **Match the encoding** off-chain and in circuits, and check against the test vector.
-4. **Prefer `update` over `remove` + `insert`.** Tombstones are never reused, so churn
-   grows the tree depth and gas.
-5. **Keep batches small.** `insertMany` accepts up to 256 values, but at roughly
-   125k gas per value, the L1 transaction gas cap (2^24) limits a batch to about 130.
+> [!NOTE]
+> Match the encoding off-chain and in circuits.

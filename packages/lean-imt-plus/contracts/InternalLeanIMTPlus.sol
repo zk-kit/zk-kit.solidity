@@ -261,7 +261,6 @@ library InternalLeanIMTPlus {
 
         uint256 slotPlusOne = self.valueIndex[oldValue];
         if (slotPlusOne == 0) revert LeafDoesNotExist();
-        if (self.valueIndex[newValue] != 0) revert LeafAlreadyExists();
         uint256 slot = slotPlusOne - 1;
 
         LeanIMTPlusLeaf storage oldPred = self.leaves[oldPredecessorIndex];
@@ -392,7 +391,7 @@ library InternalLeanIMTPlus {
     }
 
     function _has(LeanIMTPlusData storage self, uint256 value) internal view returns (bool) {
-        return value != 0 && self.valueIndex[value] != 0;
+        return self.valueIndex[value] != 0;
     }
 
     /// @dev Physical index of the leaf holding `value`. Reverts if `value` is absent.

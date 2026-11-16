@@ -84,7 +84,8 @@ library LeanIMTPlus {
         return InternalLeanIMTPlus._verifyProof(proof);
     }
 
-    /// @notice Returns the current Merkle root (0 for an empty tree).
+    /// @notice Returns the current Merkle root (0 only before the first insert: a tree emptied by
+    /// removals keeps its sentinel and tombstoned leaves, so its root is non-zero).
     /// @param self The LeanIMT+ tree instance.
     /// @return The current root.
     function root(LeanIMTPlusData storage self) public view returns (uint256) {

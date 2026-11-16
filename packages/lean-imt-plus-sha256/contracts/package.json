@@ -1,0 +1,29 @@
+{
+    "name": "@zk-kit/lean-imt-plus-sha256.sol",
+    "version": "0.0.0",
+    "description": "Lean Incremental Merkle tree with non-membership proofs implementation in Solidity, using SHA-256.",
+    "license": "MIT",
+    "files": [
+        "*.sol",
+        "!test/*",
+        "README.md",
+        "LICENSE"
+    ],
+    "keywords": [
+        "blockchain",
+        "ethereum",
+        "hardhat",
+        "smart-contracts",
+        "solidity",
+        "libraries",
+        "merkle-tree",
+        "incremental-merkle-tree",
+        "non-membership-proof",
+        "sha256"
+    ],
+    "repository": "git@github.com:zk-kit/zk-kit.solidity.git",
+    "homepage": "https://github.com/zk-kit/zk-kit.solidity/tree/main/packages/lean-imt-plus-sha256",
+    "publishConfig": {
+        "access": "public"
+    }
+}

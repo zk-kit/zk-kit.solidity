@@ -138,6 +138,28 @@
         </tr>
         <tr>
             <td>
+                <a href="https://github.com/zk-kit/zk-kit.solidity/tree/main/packages/lean-imt-plus-sha256">
+                    @zk-kit/lean-imt-plus-sha256.sol
+                </a>
+            </td>
+            <td>
+                <!-- NPM version -->
+                <a href="https://npmjs.org/package/@zk-kit/lean-imt-plus-sha256.sol">
+                    <img src="https://img.shields.io/npm/v/@zk-kit/lean-imt-plus-sha256.sol.svg?style=flat-square" alt="NPM version" />
+                </a>
+            </td>
+            <td>
+                <!-- Downloads -->
+                <a href="https://npmjs.org/package/@zk-kit/lean-imt-plus-sha256.sol">
+                    <img src="https://img.shields.io/npm/dm/@zk-kit/lean-imt-plus-sha256.sol.svg?style=flat-square" alt="Downloads" />
+                </a>
+            </td>
+            <td>
+                ❌
+            </td>
+        </tr>
+        <tr>
+            <td>
                 <a href="https://github.com/privacy-scaling-explorations/zk-kit.solidity/tree/main/packages/lazy-imt">
                     @zk-kit/lazy-imt.sol
                 </a>

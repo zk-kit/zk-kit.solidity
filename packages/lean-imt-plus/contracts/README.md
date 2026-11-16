@@ -103,12 +103,12 @@ and tombstones), and `leafIndex` is range-checked so its bit encoding is canonic
 
 ## Files
 
-| File                                                     | Purpose                                           |
-| -------------------------------------------------------- | ------------------------------------------------- |
-| [`Constants.sol`](./Constants.sol)                       | `SNARK_SCALAR_FIELD`, `TAG_LEAF`.                 |
-| [`InternalLeanIMTPlus.sol`](./InternalLeanIMTPlus.sol)   | Core library (all logic, `internal` functions).   |
-| [`LeanIMTPlus.sol`](./LeanIMTPlus.sol)                   | `public` wrapper for a single shared deployment.  |
-| [`test/LeanIMTPlusTest.sol`](./test/LeanIMTPlusTest.sol) | Harness used by the test suite and gas benchmark. |
+| File                                                   | Purpose                                           |
+| ------------------------------------------------------ | ------------------------------------------------- |
+| [`Constants.sol`](./Constants.sol)                     | `SNARK_SCALAR_FIELD`, `TAG_LEAF`.                 |
+| [`InternalLeanIMTPlus.sol`](./InternalLeanIMTPlus.sol) | Core library (all logic, `internal` functions).   |
+| [`LeanIMTPlus.sol`](./LeanIMTPlus.sol)                 | `public` wrapper for a single shared deployment.  |
+| [`test/LeanIMTPlusTest.sol`][test-harness]             | Harness used by the test suite and gas benchmark. |
 
 ## Usage
 
@@ -134,8 +134,8 @@ contract Registry {
 `InternalLeanIMTPlus`'s functions are `internal`, so importing and `using` it
 inlines the code (no deployment). `LeanIMTPlus` exposes the same API as `public`
 functions and links to the `PoseidonT3` / `PoseidonT4` libraries, so it can be
-deployed once and shared. See [`test/LeanIMTPlusTest.sol`](./test/LeanIMTPlusTest.sol)
-and the [test suite](../test/LeanIMTPlus.ts) for the linking pattern.
+deployed once and shared. See [`test/LeanIMTPlusTest.sol`][test-harness]
+and the [test suite](https://github.com/zk-kit/zk-kit.solidity/blob/main/packages/lean-imt-plus/test/LeanIMTPlus.ts) for the linking pattern.
 
 ## Security notes
 
@@ -174,3 +174,5 @@ constrain how proofs are consumed. A safe deployment must:
    an in-place `update` avoids the tombstone.
 5. **Batch within the cap.** `insertMany` accepts at most `MAX_INSERT_MANY_BATCH` (256)
    values per call; split larger inputs across calls.
+
+[test-harness]: https://github.com/zk-kit/zk-kit.solidity/blob/main/packages/lean-imt-plus/contracts/test/LeanIMTPlusTest.sol

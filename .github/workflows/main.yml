@@ -61,6 +61,11 @@ jobs:
                   path: node_modules
                   key: ${{ needs.deps.outputs.cache-key }}
 
+            - name: Initialize Hardhat vars file
+              run: |
+                  mkdir -p ~/.config/hardhat-nodejs
+                  [ -f ~/.config/hardhat-nodejs/vars.json ] || echo '{"_format":"hh-vars-1","vars":{}}' > ~/.config/hardhat-nodejs/vars.json
+
             - run: yarn compile
 
             - name: Upload compilation results

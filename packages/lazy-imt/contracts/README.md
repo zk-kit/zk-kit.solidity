@@ -58,3 +58,5 @@ yarn add @zk-kit/lazy-imt.sol
 ## 📜 Usage
 
 Please, see the [test contracts](./test) for guidance on utilizing the libraries.
+
+When using `LazyIMT.sol`, the poseidon contract might not be deployed yet on some networks. See the [deployPoseidon](../tasks/deploy-imt-test.ts) in deploy-imt-test.ts function as an example to deploy it. Or the [poseidon-solidity repo](https://github.com/chancehudson/poseidon-solidity?tab=readme-ov-file#deploy).

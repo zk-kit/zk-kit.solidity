@@ -206,6 +206,63 @@ describe("BinaryIMT", () => {
             expect(root).to.equal(jsBinaryIMT.root)
         })
 
+        it("Should correctly maintain lastSubtrees after update and following insert", async () => {
+            const depth = 4
+            const jsBinaryIMT2 = new JSBinaryIMT(poseidon2, depth, 0, 2)
+            await binaryIMTTest.init(depth)
+
+            // Insert 4 leaves
+            for (let i = 1; i <= 4; i++) {
+                jsBinaryIMT2.insert(i)
+                await binaryIMTTest.insert(i)
+            }
+
+            // Update leaf at index 0 (different path from last insert at index 3)
+            const { pathIndices, siblings } = jsBinaryIMT2.createProof(0)
+            jsBinaryIMT2.update(0, 10)
+            await binaryIMTTest.update(
+                1,
+                10,
+                siblings.map((s) => s[0]),
+                pathIndices
+            )
+
+            // Insert another leaf (this uses lastSubtrees which must be correct)
+            jsBinaryIMT2.insert(5)
+            await binaryIMTTest.insert(5)
+
+            const { root } = await binaryIMTTest.data()
+            expect(root).to.equal(jsBinaryIMT2.root)
+        })
+
+        it("Should correctly maintain lastSubtrees after remove and following insert", async () => {
+            const depth = 4
+            const jsBinaryIMT2 = new JSBinaryIMT(poseidon2, depth, 0, 2)
+            await binaryIMTTest.init(depth)
+
+            // Insert 4 leaves
+            for (let i = 1; i <= 4; i++) {
+                jsBinaryIMT2.insert(i)
+                await binaryIMTTest.insert(i)
+            }
+
+            // Remove leaf at index 0
+            const { pathIndices, siblings } = jsBinaryIMT2.createProof(0)
+            jsBinaryIMT2.delete(0)
+            await binaryIMTTest.remove(
+                1,
+                siblings.map((s) => s[0]),
+                pathIndices
+            )
+
+            // Insert another leaf (uses lastSubtrees)
+            jsBinaryIMT2.insert(5)
+            await binaryIMTTest.insert(5)
+
+            const { root } = await binaryIMTTest.data()
+            expect(root).to.equal(jsBinaryIMT2.root)
+        })
+
         it("Should not update a leaf that hasn't been inserted yet", async () => {
             binaryIMTTest.init(jsBinaryIMT.depth)
 

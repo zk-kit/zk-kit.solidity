@@ -125,11 +125,27 @@ library InternalQuinaryIMT {
 
         uint256 depth = self.depth;
         uint256 hash = newLeaf;
-        uint256 updateIndex;
+
+        uint256 updateLeafIndex;
+        for (uint8 i = 0; i < depth; ) {
+            updateLeafIndex += uint256(proofPathIndices[i]) * (5 ** i);
+            unchecked {
+                ++i;
+            }
+        }
+
+        uint256 numberOfLeaves = self.numberOfLeaves;
+
+        if (updateLeafIndex >= numberOfLeaves) {
+            revert LeafIndexOutOfRange();
+        }
+
+        // Track parent indices incrementally (dividing by 5 each level)
+        uint256 lastParentIndex = numberOfLeaves - 1;
+        uint256 updateParentIndex = updateLeafIndex;
 
         for (uint8 i = 0; i < depth; ) {
             uint256[5] memory nodes;
-            updateIndex += proofPathIndices[i] * 5 ** i;
 
             for (uint8 j = 0; j < 5; ) {
                 if (j < proofPathIndices[i]) {
@@ -144,7 +160,12 @@ library InternalQuinaryIMT {
                 }
             }
 
-            if (nodes[0] == self.lastSubtrees[i][0] || nodes[4] == self.lastSubtrees[i][4]) {
+            lastParentIndex /= 5;
+            updateParentIndex /= 5;
+
+            // Update lastSubtrees only when update and last insertion
+            // share the same parent node at level i+1
+            if (lastParentIndex == updateParentIndex) {
                 self.lastSubtrees[i][proofPathIndices[i]] = hash;
             }
 
@@ -153,10 +174,6 @@ library InternalQuinaryIMT {
             unchecked {
                 ++i;
             }
-        }
-
-        if (updateIndex >= self.numberOfLeaves) {
-            revert LeafIndexOutOfRange();
         }
 
         self.root = hash;

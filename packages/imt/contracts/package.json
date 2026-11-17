@@ -4,6 +4,7 @@
     "description": "Incremental Merkle tree implementation in Solidity.",
     "license": "MIT",
     "files": [
+        "interfaces/*.sol",
         "*.sol",
         "internal/*",
         "!test/*",

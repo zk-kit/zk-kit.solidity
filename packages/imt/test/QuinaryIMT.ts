@@ -38,7 +38,7 @@ describe("QuinaryIMT", () => {
         it("Should not insert a leaf if its value is > SNARK_SCALAR_FIELD", async () => {
             const transaction = quinaryIMTTest.insert(SNARK_SCALAR_FIELD)
 
-            await expect(transaction).to.be.revertedWithCustomError(quinaryIMT, "ValueGreaterThanSnarkScalarField")
+            await expect(transaction).to.be.revertedWithCustomError(quinaryIMT, "ValueGreaterThanHasherLimit")
         })
 
         it("Should insert a leaf in a tree", async () => {
@@ -97,7 +97,7 @@ describe("QuinaryIMT", () => {
 
             const transaction = quinaryIMTTest.update(1, SNARK_SCALAR_FIELD, [[0, 1, 2, 3]], [0])
 
-            await expect(transaction).to.be.revertedWithCustomError(quinaryIMT, "ValueGreaterThanSnarkScalarField")
+            await expect(transaction).to.be.revertedWithCustomError(quinaryIMT, "ValueGreaterThanHasherLimit")
         })
 
         it("Should not update a leaf if its original value is > SNARK_SCALAR_FIELD", async () => {
@@ -106,7 +106,7 @@ describe("QuinaryIMT", () => {
 
             const transaction = quinaryIMTTest.update(SNARK_SCALAR_FIELD, 2, [[0, 1, 2, 3]], [0])
 
-            await expect(transaction).to.be.revertedWithCustomError(quinaryIMT, "ValueGreaterThanSnarkScalarField")
+            await expect(transaction).to.be.revertedWithCustomError(quinaryIMT, "ValueGreaterThanHasherLimit")
         })
 
         it("Should not update a leaf if the path indices are wrong", async () => {
@@ -156,7 +156,7 @@ describe("QuinaryIMT", () => {
         })
 
         it("Should not update a leaf that hasn't been inserted yet", async () => {
-            quinaryIMTTest.init(jsQuinaryIMT.depth)
+            await quinaryIMTTest.init(jsQuinaryIMT.depth)
 
             for (let i = 0; i < 4; i += 1) {
                 const leaf = i + 1
@@ -189,6 +189,7 @@ describe("QuinaryIMT", () => {
 
             const transaction = quinaryIMTTest.update(0, leaf, siblings, pathIndices)
 
+            // TODO this guy sometimes gets LeafDoesNotExist instead of LeafIndexOutOfRange and the test fails
             await expect(transaction).to.be.revertedWithCustomError(quinaryIMT, "LeafIndexOutOfRange")
         })
     })
@@ -197,7 +198,7 @@ describe("QuinaryIMT", () => {
         it("Should not remove a leaf if its value is > SNARK_SCALAR_FIELD", async () => {
             const transaction = quinaryIMTTest.remove(SNARK_SCALAR_FIELD, [[0, 1, 2, 3]], [0])
 
-            await expect(transaction).to.be.revertedWithCustomError(quinaryIMT, "ValueGreaterThanSnarkScalarField")
+            await expect(transaction).to.be.revertedWithCustomError(quinaryIMT, "ValueGreaterThanHasherLimit")
         })
 
         it("Should not remove a leaf that does not exist", async () => {
